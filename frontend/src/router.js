@@ -273,7 +273,7 @@ router.beforeEach(async (to, from, next) => {
       }
 
       for (const viewType of standardViewTypes) {
-        const standardView = standardViews.value?.[doctype + ' ' + viewType]
+        const standardView = standardViews?.[doctype + ' ' + viewType]
         if (standardView?.is_default) {
           defaultViewType = viewType
           break
