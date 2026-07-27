@@ -17,10 +17,13 @@
       <template #body>
         <div
           class="mt-2 min-w-40 divide-y divide-outline-gray-modals rounded-lg bg-surface-modal shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none"
-          :class="{
-            'mt-2': ['bottom', 'left', 'right'].includes(placement),
-            'ml-2': placement == 'right-start',
-          }"
+          :class="[
+            {
+              'mt-2': ['bottom', 'left', 'right'].includes(placement),
+              'ml-2': placement == 'right-start',
+            },
+            props.panelClass,
+          ]"
         >
           <MenuItems
             class="min-w-40 divide-y divide-outline-gray-modals"
@@ -103,6 +106,10 @@ const props = defineProps({
   placement: {
     type: String,
     default: 'left',
+  },
+  panelClass: {
+    type: [String, Array, Object],
+    default: '',
   },
 })
 
