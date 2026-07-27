@@ -1,5 +1,5 @@
 <template>
-  <Menu v-slot="{ open }" as="div" class="relative inline-block text-left">
+  <Menu v-slot="{ open, close }" as="div" class="relative inline-block text-left">
     <Popover
       :transition="dropdownTransition"
       :show="open"
@@ -43,7 +43,7 @@
                 :key="item.label"
                 v-slot="{ active }"
               >
-                <slot name="item" v-bind="{ item, active }">
+                <slot name="item" v-bind="{ item, active, close }">
                   <component
                     :is="item.component"
                     v-if="item.component"

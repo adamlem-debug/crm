@@ -85,7 +85,7 @@
 </template>
 <script setup>
 import Icon from '@/components/Icon.vue'
-import { Dropdown } from 'frappe-ui'
+import Dropdown from '@/components/frappe-ui/Dropdown.vue'
 
 defineProps({
   routeName: { type: String, required: true },
