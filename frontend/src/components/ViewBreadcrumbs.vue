@@ -21,6 +21,7 @@
     <Dropdown
       v-if="viewControls && viewControls.viewsDropdownOptions"
       :options="viewControls.viewsDropdownOptions"
+      panel-class="!bg-surface-gray-2"
     >
       <template #default="{ open }">
         <Button
@@ -62,6 +63,7 @@
             <Dropdown
               placement="right-start"
               :options="viewControls.viewActions(item, close)"
+              panel-class="!bg-surface-gray-2"
             >
               <template #default>
                 <Button
