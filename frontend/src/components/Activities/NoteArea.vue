@@ -2,10 +2,20 @@
   <div
     class="activity group flex h-48 cursor-pointer flex-col justify-between gap-2 rounded-md bg-surface-gray-1 px-4 py-3 hover:bg-surface-gray-2"
   >
-    <div class="flex items-center justify-between">
-      <div class="truncate text-lg-medium text-ink-gray-8">
-        {{ note.title }}
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <div class="truncate text-lg-medium text-ink-gray-8">
+          {{ note.title }}
+        </div>
+
+        <div
+          v-if="note.custom_type"
+          class="mt-1 inline-flex rounded bg-surface-gray-2 px-2 py-0.5 text-xs-medium text-ink-gray-7"
+        >
+          {{ __(note.custom_type) }}
+        </div>
       </div>
+
       <Dropdown
         :options="[
           {

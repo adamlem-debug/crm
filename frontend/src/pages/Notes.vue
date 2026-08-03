@@ -34,10 +34,20 @@
         class="group flex h-56 cursor-pointer flex-col justify-between gap-2 rounded-lg border px-5 py-4 shadow-sm hover:bg-surface-sidebar"
         @click="editNote(note.name)"
       >
-        <div class="flex items-center justify-between">
-          <div class="truncate text-lg-medium text-ink-gray-9">
-            {{ note.title }}
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <div class="truncate text-lg-medium text-ink-gray-9">
+              {{ note.title }}
+            </div>
+
+            <div
+              v-if="note.custom_type"
+              class="mt-1 inline-flex rounded bg-surface-gray-2 px-2 py-0.5 text-xs-medium text-ink-gray-7"
+            >
+              {{ __(note.custom_type) }}
+            </div>
           </div>
+
           <Dropdown
             :options="[
               {

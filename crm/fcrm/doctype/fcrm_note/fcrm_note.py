@@ -25,6 +25,7 @@ class FCRMNote(Document):
 		rows = [
 			"name",
 			"title",
+			"custom_type",
 			"content",
 			"reference_doctype",
 			"reference_docname",
