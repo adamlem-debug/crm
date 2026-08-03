@@ -618,6 +618,22 @@ function getFieldObj(field) {
     Object.assign(field, scriptOverrides)
   }
 
+  if (field.fieldtype === 'Select' && typeof field.options === 'string') {
+    field.options = field.options.split('\n').map((option) => {
+      return {
+        label: __(option),
+        value: option,
+      }
+    })
+
+    if (field.options[0].value !== '' && !field.reqd) {
+      field.options.unshift({
+        label: '',
+        value: '',
+      })
+    }
+  }
+
   if (field.fieldtype === 'Link' && field.options !== 'User') {
     if (!field.create) {
       field.create = (value, field, row, close) => {
