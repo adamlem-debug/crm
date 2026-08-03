@@ -618,15 +618,32 @@ function getFieldObj(field) {
     Object.assign(field, scriptOverrides)
   }
 
-  if (field.fieldtype === 'Select' && typeof field.options === 'string') {
-    field.options = field.options.split('\n').map((option) => {
+  if (field.fieldtype === 'Select') {
+  let options = []
+
+  if (typeof field.options === 'string') {
+      options = field.options.split('\n')
+    } else if (Array.isArray(field.options)) {
+      options = field.options
+    }
+
+    field.options = options.map((option) => {
+      const value =
+        typeof option === 'object' && option !== null ? option.value : option
+
+      const label =
+        typeof option === 'object' && option !== null
+          ? option.label || option.value
+          : option
+
       return {
-        label: __(option),
-        value: option,
+        ...(typeof option === 'object' && option !== null ? option : {}),
+        label: value === '' ? '' : __(label),
+        value: value,
       }
     })
 
-    if (field.options[0].value !== '' && !field.reqd) {
+    if (field.options[0]?.value !== '' && !field.reqd) {
       field.options.unshift({
         label: '',
         value: '',
