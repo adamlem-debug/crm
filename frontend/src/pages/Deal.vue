@@ -9,12 +9,13 @@
     </template>
     <template v-if="!errorTitle" #right-header>
       <CustomActions
-        v-if="document._actions?.length"
-        :actions="document._actions"
+        v-if="visibleActions(document._actions).length"
+        :actions="visibleActions(document._actions)"
       />
+
       <CustomActions
-        v-if="document.actions?.length"
-        :actions="document.actions"
+        v-if="visibleActions(document.actions).length"
+        :actions="visibleActions(document.actions)"
       />
       <AssignTo v-model="assignees.data" doctype="CRM Deal" :docname="dealId" />
       <Dropdown
@@ -438,6 +439,14 @@ const {
 const canDelete = computed(() => permissions.data?.permissions?.delete || false)
 
 const doc = computed(() => document.doc || {})
+
+const visibleActions = (actions = []) => {
+  return (actions || []).filter(
+    (action) =>
+      action.label !== 'Create Quotation' &&
+      action.label !== __('Create Quotation'),
+  )
+}
 
 watch(error, (err) => {
   if (err) {
