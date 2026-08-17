@@ -146,7 +146,7 @@ import ReloadIcon from '@/components/Icons/ReloadIcon.vue'
 import Autocomplete from '@/components/frappe-ui/Autocomplete.vue'
 import { isTouchScreenDevice } from '@/utils'
 import { getMeta } from '@/stores/meta'
-import { Popover } from 'frappe-ui'
+import { createResource, Popover } from 'frappe-ui'
 import Draggable from 'vuedraggable'
 import { computed, ref } from 'vue'
 import { watchOnce } from '@vueuse/core'
@@ -197,21 +197,116 @@ const rows = computed({
 
 const { getFields } = getMeta(props.doctype)
 
-const fields = computed(() => {
-  const _fields = getFields({ withStandardFields: true }) || []
-  if (!_fields.length) return []
+// Standard fields that are useful in the Client Case list even though
+// they are not part of the CRM Deal form layout.
+const DEAL_SYSTEM_LIST_FIELDS = new Set(['_assign', 'modified'])
 
-  let existingFields = []
-  if (columns.value.length) {
-    existingFields = columns.value.map((column) => column.key)
+const dataFieldsLayout = createResource({
+  url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout',
+  params: {
+    doctype: props.doctype,
+    type: 'Data Fields',
+  },
+  auto: props.doctype === 'CRM Deal',
+})
+
+const sidePanelLayout = createResource({
+  url: 'crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_sidepanel_sections',
+  params: {
+    doctype: props.doctype,
+  },
+  auto: props.doctype === 'CRM Deal',
+})
+
+function getFieldnamesFromSections(sections = []) {
+  const fieldnames = new Set()
+
+  for (const section of sections || []) {
+    for (const column of section?.columns || []) {
+      for (const field of column?.fields || []) {
+        // Layout endpoints normally return field objects,
+        // but support raw fieldnames as well.
+        if (typeof field === 'string') {
+          fieldnames.add(field)
+          continue
+        }
+
+        // Fields hidden because of permission level must not be
+        // available as list columns.
+        if (field?.fieldname && !field.hidden) {
+          fieldnames.add(field.fieldname)
+        }
+      }
+    }
   }
 
-  return _fields.filter((field) => {
-    return (
-      !columns.value.find((column) => column.key === field.fieldname) &&
-      !existingFields.includes(field.fieldname)
+  return fieldnames
+}
+
+const allowedDealFields = computed(() => {
+  if (props.doctype !== 'CRM Deal') return null
+
+  const allowed = new Set(DEAL_SYSTEM_LIST_FIELDS)
+
+  // Data Fields returns tabs -> sections -> columns -> fields
+  for (const tab of dataFieldsLayout.data || []) {
+    const fieldnames = getFieldnamesFromSections(tab?.sections || [])
+
+    for (const fieldname of fieldnames) {
+      allowed.add(fieldname)
+    }
+  }
+
+  // Side Panel returns sections -> columns -> fields
+  const sidePanelFieldnames = getFieldnamesFromSections(
+    sidePanelLayout.data || [],
+  )
+
+  for (const fieldname of sidePanelFieldnames) {
+    allowed.add(fieldname)
+  }
+
+  return allowed
+})
+
+const fields = computed(() => {
+  const _fields = getFields({ withStandardFields: true }) || []
+
+  if (!_fields.length) return []
+
+  let availableFields = _fields
+
+  // CRM Deal: only expose fields that are actually present
+  // in Data Fields / Side Panel, plus useful standard list fields.
+  if (props.doctype === 'CRM Deal') {
+    // Wait until the layout resources have loaded.
+    if (!dataFieldsLayout.data && !sidePanelLayout.data) return []
+
+    availableFields = _fields.filter((field) =>
+      allowedDealFields.value.has(field.fieldname),
     )
-  })
+  }
+
+  const existingFields = new Set(
+    (columns.value || []).map((column) => column.key),
+  )
+
+  return availableFields
+    .filter((field) => !existingFields.has(field.fieldname))
+    .map((field) => ({
+      ...field,
+
+      // Keep the original label so the saved view remains
+      // language-independent.
+      originalLabel: field.label,
+
+      // Autocomplete displays and searches this translated label.
+      label: window.__(field.label),
+
+      // Autocomplete expects a value. Using the fieldname also makes
+      // searching/selection deterministic.
+      value: field.fieldname,
+    }))
 })
 
 function addColumn(c) {
@@ -223,7 +318,7 @@ function addColumn(c) {
     : 'left'
 
   let _column = {
-    label: c.label,
+    label: c.originalLabel || c.label,
     type: c.fieldtype,
     key: c.fieldname,
     options: c.options,
