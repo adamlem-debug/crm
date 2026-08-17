@@ -9245,3 +9245,9 @@ msgstr "Doprava"
 
 msgid "Venture Capital"
 msgstr "Rizikový kapitál"
+
+msgid "Create task"
+msgstr "Vytvořit úkol"
+
+msgid "Create Task"
+msgstr "Vytvořit úkol"
