@@ -34,7 +34,7 @@
    "fieldtype": "Select",
    "in_standard_filter": 1,
    "label": "Priority",
-   "options": "Low\nMedium\nHigh"
+   "options": "\nLow\nMedium\nHigh"
   },
   {
    "fieldname": "start_date",
