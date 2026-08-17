@@ -9090,3 +9090,158 @@ msgstr "⚠️ Nebyla nalezena žádná data pro nadřazené pole: {0}"
 #: frontend/src/data/script.js:257
 msgid "⚠️ No row found for idx: {0} in parent field: {1}"
 msgstr "⚠️ Pro idx nebyl v nadřazeném poli nalezen žádný řádek: {0}: {1}"
+
+# CRM Industry values
+
+msgid "Accounting"
+msgstr "Účetnictví"
+
+msgid "Advertising"
+msgstr "Reklama"
+
+msgid "Aerospace"
+msgstr "Letecký a kosmický průmysl"
+
+msgid "Agriculture"
+msgstr "Zemědělství"
+
+msgid "Airline"
+msgstr "Letecká doprava"
+
+msgid "Apparel & Accessories"
+msgstr "Oděvy a doplňky"
+
+msgid "Automotive"
+msgstr "Automobilový průmysl"
+
+msgid "Banking"
+msgstr "Bankovnictví"
+
+msgid "Biotechnology"
+msgstr "Biotechnologie"
+
+msgid "Broadcasting"
+msgstr "Vysílání"
+
+msgid "Brokerage"
+msgstr "Makléřské služby"
+
+msgid "Chemical"
+msgstr "Chemický průmysl"
+
+msgid "Computer"
+msgstr "Výpočetní technika"
+
+msgid "Consulting"
+msgstr "Poradenství"
+
+msgid "Consumer Products"
+msgstr "Spotřební zboží"
+
+msgid "Cosmetics"
+msgstr "Kosmetika"
+
+msgid "Defense"
+msgstr "Obranný průmysl"
+
+msgid "Department Stores"
+msgstr "Obchodní domy"
+
+msgid "Education"
+msgstr "Vzdělávání"
+
+msgid "Electronics"
+msgstr "Elektronika"
+
+msgid "Energy"
+msgstr "Energetika"
+
+msgid "Entertainment & Leisure, Executive Search"
+msgstr "Zábava a volný čas, vyhledávání vedoucích pracovníků"
+
+msgid "Financial Services"
+msgstr "Finanční služby"
+
+msgid "Food"
+msgstr "Potravinářství"
+
+msgid "Beverage & Tobacco"
+msgstr "Nápoje a tabák"
+
+msgid "Grocery"
+msgstr "Potraviny"
+
+msgid "Health Care"
+msgstr "Zdravotnictví"
+
+msgid "Internet Publishing"
+msgstr "Internetové publikování"
+
+msgid "Investment Banking"
+msgstr "Investiční bankovnictví"
+
+msgid "Legal"
+msgstr "Právní služby"
+
+msgid "Manufacturing"
+msgstr "Výroba"
+
+msgid "Motion Picture & Video"
+msgstr "Film a video"
+
+msgid "Music"
+msgstr "Hudební průmysl"
+
+msgid "Newspaper Publishers"
+msgstr "Vydavatelství novin"
+
+msgid "Online Auctions"
+msgstr "Online aukce"
+
+msgid "Pension Funds"
+msgstr "Penzijní fondy"
+
+msgid "Pharmaceuticals"
+msgstr "Farmaceutický průmysl"
+
+msgid "Private Equity"
+msgstr "Private equity"
+
+msgid "Publishing"
+msgstr "Vydavatelství"
+
+msgid "Real Estate"
+msgstr "Nemovitosti"
+
+msgid "Retail & Wholesale"
+msgstr "Maloobchod a velkoobchod"
+
+msgid "Securities & Commodity Exchanges"
+msgstr "Burzy cenných papírů a komodit"
+
+msgid "Service"
+msgstr "Služby"
+
+msgid "Soap & Detergent"
+msgstr "Mýdla a čisticí prostředky"
+
+msgid "Software"
+msgstr "Software"
+
+msgid "Sports"
+msgstr "Sport"
+
+msgid "Technology"
+msgstr "Technologie"
+
+msgid "Telecommunications"
+msgstr "Telekomunikace"
+
+msgid "Television"
+msgstr "Televize"
+
+msgid "Transportation"
+msgstr "Doprava"
+
+msgid "Venture Capital"
+msgstr "Rizikový kapitál"
