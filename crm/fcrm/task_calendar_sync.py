@@ -74,17 +74,6 @@ def sync_task_calendar_event(task_name):
 
     task = frappe.get_doc("CRM Task", task_name)
 
-    # TEMPORARY DEBUG:
-    # Confirm that the saved CRM Task can be loaded and that
-    # Assigned To, Due Date and Duration contain the expected values.
-    frappe.throw(
-        f"SYNC DATA | "
-        f"Task: {task.name} | "
-        f"Assigned To: {task.assigned_to} | "
-        f"Due Date: {task.due_date} | "
-        f"Duration: {task.get('custom_duration')}"
-    )
-
     existing_events = get_task_events(task_name)
     existing_event = existing_events[0] if existing_events else None
 
@@ -94,40 +83,30 @@ def sync_task_calendar_event(task_name):
 
     duration = task.get("custom_duration")
 
-    # Missing information means we cannot create a calendar Event.
+    # Confirm required Task data exists.
     if not task.assigned_to or not task.due_date or not duration:
-        frappe.log_error(
-            title="CRM Task Calendar Sync - Missing Data",
-            message=(
-                f"Task: {task.name}\n"
-                f"Assigned To: {task.assigned_to}\n"
-                f"Due Date: {task.due_date}\n"
-                f"Duration: {duration}"
-            ),
+        frappe.throw(
+            f"MISSING DATA | "
+            f"Assigned To: {task.assigned_to} | "
+            f"Due Date: {task.due_date} | "
+            f"Duration: {duration}"
         )
-
-        if existing_event:
-            delete_event(existing_event.name)
-
-        return
 
     calendar = get_google_calendar(task.assigned_to)
 
-    # Assigned user has no enabled Google Calendar with push enabled.
+    # TEMPORARY DEBUG:
+    # Check whether the assigned user's Google Calendar is found.
     if not calendar:
-        frappe.log_error(
-            title="CRM Task Calendar Sync - Google Calendar Missing",
-            message=(
-                f"Task: {task.name}\n"
-                f"Assigned To: {task.assigned_to}\n"
-                "No enabled Google Calendar with Push enabled was found."
-            ),
+        frappe.throw(
+            f"CALENDAR LOOKUP FAILED | "
+            f"Assigned To: {task.assigned_to}"
         )
 
-        if existing_event:
-            delete_event(existing_event.name)
-
-        return
+    frappe.throw(
+        f"CALENDAR FOUND | "
+        f"Name: {calendar.name} | "
+        f"Google Calendar ID: {calendar.google_calendar_id}"
+    )
 
     starts_on = get_datetime(task.due_date)
     ends_on = add_to_date(
