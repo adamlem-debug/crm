@@ -9,8 +9,19 @@ TERMINAL_EVENT_STATUSES = {
 
 
 def queue_task_calendar_sync(doc, method=None):
-    # Keep synchronous until final lifecycle testing is complete.
-    sync_task_calendar_event(doc.name)
+    """
+    Queue calendar synchronization only after the CRM Task
+    transaction has successfully committed.
+
+    This keeps Task saving independent from Google Calendar sync.
+    """
+
+    frappe.enqueue(
+        "crm.fcrm.task_calendar_sync.sync_task_calendar_event",
+        queue="short",
+        enqueue_after_commit=True,
+        task_name=doc.name,
+    )
 
 
 def cleanup_task_notifications(doc, method=None):
@@ -316,6 +327,9 @@ def create_calendar_event(
     )
 
     # Store CURRENT Event on Task.
+    #
+    # Direct DB update intentionally avoids another
+    # CRM Task on_update -> calendar sync loop.
     frappe.db.set_value(
         "CRM Task",
         task.name,
@@ -328,6 +342,16 @@ def create_calendar_event(
 
 
 def sync_task_calendar_event(task_name):
+    """
+    Synchronize the current state of a CRM Task with its
+    Frappe Event / Google Calendar event.
+
+    Important:
+    This function always reads the Task fresh from the DB.
+    The queued job therefore works from the latest committed
+    Task state rather than from stale data passed by the UI.
+    """
+
     if not frappe.db.exists(
         "CRM Task",
         task_name,
@@ -383,16 +407,6 @@ def sync_task_calendar_event(task_name):
     # ---------------------------------------------------------
     # TASK CANCELLATION
     # ---------------------------------------------------------
-    #
-    # Cancellation takes priority over normal sync rules.
-    #
-    # If the Task already has an Event:
-    #     Event -> Cancelled
-    #     Google event -> cancelled/disappears
-    #
-    # We retain the Event and the Task -> Event relationship
-    # until the Task becomes active again.
-    # ---------------------------------------------------------
 
     if (
         task.status
@@ -424,12 +438,6 @@ def sync_task_calendar_event(task_name):
 
     # ---------------------------------------------------------
     # REACTIVATION AFTER CANCELLATION
-    # ---------------------------------------------------------
-    #
-    # A Google Event that has been cancelled cannot reliably
-    # be revived simply by setting the Frappe Event back to Open.
-    #
-    # Keep the old Event for history and create a fresh one.
     # ---------------------------------------------------------
 
     if (
@@ -490,10 +498,6 @@ def sync_task_calendar_event(task_name):
     )
 
     if not calendar:
-        # Assigned user has no configured Google Calendar.
-        #
-        # If an Event existed for the previous assignee,
-        # remove that active Event.
         if existing_event:
             remove_active_task_event(
                 task.name,
