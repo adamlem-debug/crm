@@ -178,6 +178,9 @@ doc_events = {
 		"on_update": [
 			"crm.fcrm.task_calendar_sync.queue_task_calendar_sync"
 		],
+		"on_trash": [
+			"crm.fcrm.task_calendar_sync.debug_task_delete"
+		],
 		"after_delete": [
 			"crm.fcrm.task_calendar_sync.queue_task_calendar_delete"
 		],
