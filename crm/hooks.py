@@ -174,12 +174,12 @@ doc_events = {
 		"validate": ["crm.api.whatsapp.validate"],
 		"on_update": ["crm.api.whatsapp.on_update"],
 	},
-    "CRM Task": {
+	"CRM Task": {
 		"on_update": [
 			"crm.fcrm.task_calendar_sync.queue_task_calendar_sync"
 		],
 		"on_trash": [
-			"crm.fcrm.task_calendar_sync.debug_task_delete"
+			"crm.fcrm.task_calendar_sync.cleanup_task_notifications"
 		],
 		"after_delete": [
 			"crm.fcrm.task_calendar_sync.queue_task_calendar_delete"

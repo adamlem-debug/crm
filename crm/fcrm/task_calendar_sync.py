@@ -1,66 +1,55 @@
 import frappe
-from frappe.model.delete_doc import get_dynamic_linked_docs, get_linked_docs
 from frappe.utils import add_to_date, get_datetime
 
 
 def queue_task_calendar_sync(doc, method=None):
+    # Keep synchronous while we finish testing.
     sync_task_calendar_event(doc.name)
 
 
-def debug_task_delete(doc, method=None):
+def cleanup_task_notifications(doc, method=None):
     """
-    TEMPORARY DEBUG.
+    Runs during CRM Task on_trash.
 
-    Runs during on_trash and shows every static/dynamic document
-    that Frappe sees as linking to this CRM Task.
+    CRM Notification contains Dynamic Links to CRM Task records.
+    Those links can prevent Frappe from deleting the Task.
 
-    This deliberately throws an exception so the diagnostic stays visible.
+    Delete Task-related CRM Notifications before Frappe performs
+    its linked-document validation.
+
+    These DB deletions are part of the same transaction, so if
+    Task deletion fails later, they are rolled back as well.
     """
 
-    static_links = get_linked_docs(doc)
-    dynamic_links = get_dynamic_linked_docs(doc)
-
-    static_text = format_links(static_links)
-    dynamic_text = format_links(dynamic_links)
-
-    frappe.throw(
-        (
-            f"CRM TASK DELETE DEBUG\n\n"
-            f"Task: {doc.name}\n"
-            f"Calendar Event: {doc.get('custom_calendar_event') or 'None'}\n\n"
-            f"STATIC LINKS:\n"
-            f"{static_text}\n\n"
-            f"DYNAMIC LINKS:\n"
-            f"{dynamic_text}"
-        ),
-        title="CRM Task Delete Debug",
+    # CRM Notification:
+    # reference_doctype -> reference_name
+    frappe.db.delete(
+        "CRM Notification",
+        {
+            "reference_doctype": "CRM Task",
+            "reference_name": str(doc.name),
+        },
     )
 
-
-def format_links(links):
-    if not links:
-        return "NONE"
-
-    rows = []
-
-    for link in links:
-        rows.append(
-            (
-                f"- Doctype: {link.get('reference_doctype')}\n"
-                f"  Name: {link.get('reference_docname')}\n"
-                f"  Row: {link.get('at_position') or ''}"
-            )
-        )
-
-    return "\n".join(rows)
+    # CRM Notification:
+    # notification_type_doctype -> notification_type_doc
+    frappe.db.delete(
+        "CRM Notification",
+        {
+            "notification_type_doctype": "CRM Task",
+            "notification_type_doc": str(doc.name),
+        },
+    )
 
 
 def queue_task_calendar_delete(doc, method=None):
     """
-    Runs after CRM Task deletion.
+    Runs after the CRM Task has successfully been deleted.
 
     The deleted document object still contains custom_calendar_event.
-    Delete the corresponding Event only after the Task transaction commits.
+
+    Delete the corresponding Frappe Event after commit.
+    Frappe's native Event hook then removes the Google Calendar event.
     """
 
     event_name = doc.get("custom_calendar_event")
@@ -102,10 +91,20 @@ def get_google_calendar(user):
 
 
 def delete_calendar_event(event_name):
+    """
+    Delete a Frappe Event.
+
+    Normal Event deletion triggers Frappe's native
+    Google Calendar cleanup.
+    """
+
     if not event_name:
         return
 
-    if frappe.db.exists("Event", event_name):
+    if frappe.db.exists(
+        "Event",
+        event_name,
+    ):
         frappe.delete_doc(
             "Event",
             event_name,
@@ -114,7 +113,15 @@ def delete_calendar_event(event_name):
 
 
 def unlink_task_calendar_event(task_name):
-    if frappe.db.exists("CRM Task", task_name):
+    """
+    Remove CRM Task -> Event link without triggering
+    another CRM Task on_update cycle.
+    """
+
+    if frappe.db.exists(
+        "CRM Task",
+        task_name,
+    ):
         frappe.db.set_value(
             "CRM Task",
             task_name,
@@ -125,27 +132,47 @@ def unlink_task_calendar_event(task_name):
 
 
 def remove_task_event(task_name, event_name):
+    """
+    Used when Task still exists but should no longer
+    have a calendar Event.
+    """
+
     if not event_name:
         return
 
-    unlink_task_calendar_event(task_name)
+    unlink_task_calendar_event(
+        task_name,
+    )
 
-    delete_calendar_event(event_name)
+    delete_calendar_event(
+        event_name,
+    )
 
 
-def create_calendar_event(task, calendar, starts_on, ends_on):
+def create_calendar_event(
+    task,
+    calendar,
+    starts_on,
+    ends_on,
+):
     event = frappe.get_doc(
         {
             "doctype": "Event",
+
             "subject": task.title,
             "description": task.description or "",
+
             "event_type": "Public",
             "event_category": "Event",
+
             "starts_on": starts_on,
             "ends_on": ends_on,
+
             "all_day": 0,
             "send_reminder": 0,
+
             "sync_with_google_calendar": 1,
+
             "google_calendar": calendar.name,
             "google_calendar_id": calendar.google_calendar_id,
         }
@@ -155,6 +182,7 @@ def create_calendar_event(task, calendar, starts_on, ends_on):
         ignore_permissions=True,
     )
 
+    # Assigned CRM user remains the Event owner.
     frappe.db.set_value(
         "Event",
         event.name,
@@ -163,6 +191,8 @@ def create_calendar_event(task, calendar, starts_on, ends_on):
         update_modified=False,
     )
 
+    # Store Event relationship on CRM Task.
+    # Direct DB update prevents another Task on_update loop.
     frappe.db.set_value(
         "CRM Task",
         task.name,
@@ -175,7 +205,10 @@ def create_calendar_event(task, calendar, starts_on, ends_on):
 
 
 def sync_task_calendar_event(task_name):
-    if not frappe.db.exists("CRM Task", task_name):
+    if not frappe.db.exists(
+        "CRM Task",
+        task_name,
+    ):
         return
 
     task = frappe.get_doc(
@@ -183,14 +216,23 @@ def sync_task_calendar_event(task_name):
         task_name,
     )
 
-    duration = task.get("custom_duration")
-    event_name = task.get("custom_calendar_event")
+    duration = task.get(
+        "custom_duration",
+    )
+
+    event_name = task.get(
+        "custom_calendar_event",
+    )
 
     # ---------------------------------------------------------
     # REQUIRED TASK DATA
     # ---------------------------------------------------------
 
-    if not task.assigned_to or not task.due_date or not duration:
+    if (
+        not task.assigned_to
+        or not task.due_date
+        or not duration
+    ):
         frappe.log_error(
             title="CRM Task Calendar Sync - Missing Data",
             message=(
@@ -218,6 +260,8 @@ def sync_task_calendar_event(task_name):
     )
 
     if not calendar:
+        # User has no enabled Google Calendar.
+        # Remove Event if one previously existed.
         if event_name:
             remove_task_event(
                 task.name,
@@ -241,15 +285,19 @@ def sync_task_calendar_event(task_name):
 
     existing_event = None
 
-    if event_name and frappe.db.exists(
-        "Event",
-        event_name,
+    if (
+        event_name
+        and frappe.db.exists(
+            "Event",
+            event_name,
+        )
     ):
         existing_event = frappe.get_doc(
             "Event",
             event_name,
         )
 
+    # Task points to Event that no longer exists.
     if event_name and not existing_event:
         unlink_task_calendar_event(
             task.name,
@@ -289,11 +337,15 @@ def sync_task_calendar_event(task_name):
 
         existing_event.all_day = 0
         existing_event.send_reminder = 0
+
+        # Public so admins/users with Event access can see it.
         existing_event.event_type = "Public"
 
         existing_event.sync_with_google_calendar = 1
         existing_event.google_calendar = calendar.name
-        existing_event.google_calendar_id = calendar.google_calendar_id
+        existing_event.google_calendar_id = (
+            calendar.google_calendar_id
+        )
 
         existing_event.save(
             ignore_permissions=True,
