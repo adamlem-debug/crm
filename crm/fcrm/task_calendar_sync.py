@@ -4,6 +4,7 @@ from frappe.utils import add_to_date, get_datetime
 
 def queue_task_calendar_sync(doc, method=None):
     # Run synchronously temporarily while debugging.
+    # Once everything works, we will move this back to a background job.
     sync_task_calendar_event(doc.name)
 
 
@@ -23,7 +24,11 @@ def get_task_events(task_name):
             "reference_doctype": "CRM Task",
             "reference_docname": str(task_name),
         },
-        fields=["name", "google_calendar"],
+        fields=[
+            "name",
+            "google_calendar",
+            "google_calendar_event_id",
+        ],
         order_by="creation asc",
     )
 
@@ -45,7 +50,10 @@ def get_google_calendar(user):
     return frappe.db.get_value(
         "Google Calendar",
         calendar_name,
-        ["name", "google_calendar_id"],
+        [
+            "name",
+            "google_calendar_id",
+        ],
         as_dict=True,
     )
 
@@ -83,49 +91,74 @@ def sync_task_calendar_event(task_name):
 
     duration = task.get("custom_duration")
 
-    # Confirm required Task data exists.
+    # Required information for calendar sync.
     if not task.assigned_to or not task.due_date or not duration:
-        frappe.throw(
-            f"MISSING DATA | "
-            f"Assigned To: {task.assigned_to} | "
-            f"Due Date: {task.due_date} | "
-            f"Duration: {duration}"
+        frappe.log_error(
+            title="CRM Task Calendar Sync - Missing Data",
+            message=(
+                f"Task: {task.name}\n"
+                f"Assigned To: {task.assigned_to}\n"
+                f"Due Date: {task.due_date}\n"
+                f"Duration: {duration}"
+            ),
         )
+
+        if existing_event:
+            delete_event(existing_event.name)
+
+        return
 
     calendar = get_google_calendar(task.assigned_to)
 
-    # TEMPORARY DEBUG:
-    # Check whether the assigned user's Google Calendar is found.
+    # Assigned user has no enabled Google Calendar with push enabled.
     if not calendar:
-        frappe.throw(
-            f"CALENDAR LOOKUP FAILED | "
-            f"Assigned To: {task.assigned_to}"
+        frappe.log_error(
+            title="CRM Task Calendar Sync - Google Calendar Missing",
+            message=(
+                f"Task: {task.name}\n"
+                f"Assigned To: {task.assigned_to}\n"
+                "No enabled Google Calendar with Push enabled was found."
+            ),
         )
 
-    frappe.throw(
-        f"CALENDAR FOUND | "
-        f"Name: {calendar.name} | "
-        f"Google Calendar ID: {calendar.google_calendar_id}"
-    )
+        if existing_event:
+            delete_event(existing_event.name)
+
+        return
 
     starts_on = get_datetime(task.due_date)
+
     ends_on = add_to_date(
         starts_on,
         minutes=int(duration),
     )
 
-    # If Assigned To changed, recreate the Event in the new calendar.
-    if existing_event and existing_event.google_calendar != calendar.name:
+    # If Assigned To changed and therefore the target Google Calendar
+    # changed, remove the old Event and create a new one.
+    if (
+        existing_event
+        and existing_event.google_calendar != calendar.name
+    ):
         delete_event(existing_event.name)
         existing_event = None
 
+    # ---------------------------------------------------------
+    # UPDATE EXISTING EVENT
+    # ---------------------------------------------------------
     if existing_event:
-        event = frappe.get_doc("Event", existing_event.name)
+        event = frappe.get_doc(
+            "Event",
+            existing_event.name,
+        )
 
         event.subject = task.title
-        event.description = task.description
+        event.description = task.description or ""
+
         event.starts_on = starts_on
         event.ends_on = ends_on
+
+        event.all_day = 0
+        event.send_reminder = 0
 
         event.sync_with_google_calendar = 1
         event.google_calendar = calendar.name
@@ -136,32 +169,82 @@ def sync_task_calendar_event(task_name):
 
         event.save(ignore_permissions=True)
 
-    else:
-        event = frappe.get_doc(
-            {
-                "doctype": "Event",
-                "subject": task.title,
-                "description": task.description,
-                "event_type": "Private",
-                "event_category": "Event",
-                "starts_on": starts_on,
-                "ends_on": ends_on,
-                "all_day": 0,
-                "send_reminder": 0,
-                "sync_with_google_calendar": 1,
-                "google_calendar": calendar.name,
-                "google_calendar_id": calendar.google_calendar_id,
-                "reference_doctype": "CRM Task",
-                "reference_docname": str(task.name),
-            }
+        # Reload because Frappe's Google hook may have updated
+        # google_calendar_event_id directly in the database.
+        event.reload()
+
+        frappe.msgprint(
+            (
+                f"CRM Task calendar sync successful.<br><br>"
+                f"Frappe Event: <b>{event.name}</b><br>"
+                f"Google Calendar: <b>{calendar.name}</b><br>"
+                f"Google Event ID: "
+                f"<b>{event.google_calendar_event_id or 'Not set'}</b><br>"
+                f"Start: <b>{event.starts_on}</b><br>"
+                f"End: <b>{event.ends_on}</b>"
+            ),
+            title="Calendar Sync Debug",
+            indicator="green",
         )
 
-        event.insert(ignore_permissions=True)
+        return
 
-        frappe.db.set_value(
-            "Event",
-            event.name,
-            "owner",
-            task.assigned_to,
-            update_modified=False,
-        )
+    # ---------------------------------------------------------
+    # CREATE NEW EVENT
+    # ---------------------------------------------------------
+    event = frappe.get_doc(
+        {
+            "doctype": "Event",
+
+            "subject": task.title,
+            "description": task.description or "",
+
+            "event_type": "Private",
+            "event_category": "Event",
+
+            "starts_on": starts_on,
+            "ends_on": ends_on,
+
+            "all_day": 0,
+            "send_reminder": 0,
+
+            "sync_with_google_calendar": 1,
+
+            "google_calendar": calendar.name,
+            "google_calendar_id": calendar.google_calendar_id,
+
+            "reference_doctype": "CRM Task",
+            "reference_docname": str(task.name),
+        }
+    )
+
+    # This should also trigger Frappe's native
+    # Event -> Google Calendar after_insert hook.
+    event.insert(ignore_permissions=True)
+
+    # Make the assigned CRM user the owner of the Frappe Event.
+    frappe.db.set_value(
+        "Event",
+        event.name,
+        "owner",
+        task.assigned_to,
+        update_modified=False,
+    )
+
+    # Frappe's Google hook stores google_calendar_event_id
+    # directly in the DB, so reload before showing debug info.
+    event.reload()
+
+    frappe.msgprint(
+        (
+            f"CRM Task calendar sync successful.<br><br>"
+            f"Frappe Event: <b>{event.name}</b><br>"
+            f"Google Calendar: <b>{calendar.name}</b><br>"
+            f"Google Event ID: "
+            f"<b>{event.google_calendar_event_id or 'Not set'}</b><br>"
+            f"Start: <b>{event.starts_on}</b><br>"
+            f"End: <b>{event.ends_on}</b>"
+        ),
+        title="Calendar Sync Debug",
+        indicator="green",
+    )
