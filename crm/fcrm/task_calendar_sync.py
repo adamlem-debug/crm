@@ -3,9 +3,8 @@ from frappe.utils import add_to_date, get_datetime
 
 
 def queue_task_calendar_sync(doc, method=None):
-    frappe.throw(
-        f"CRM Task calendar hook FIRED for task {doc.name}"
-    )
+    # Run synchronously temporarily while debugging.
+    sync_task_calendar_event(doc.name)
 
 
 def queue_task_calendar_delete(doc, method=None):
@@ -74,6 +73,17 @@ def sync_task_calendar_event(task_name):
         return
 
     task = frappe.get_doc("CRM Task", task_name)
+
+    # TEMPORARY DEBUG:
+    # Confirm that the saved CRM Task can be loaded and that
+    # Assigned To, Due Date and Duration contain the expected values.
+    frappe.throw(
+        f"SYNC DATA | "
+        f"Task: {task.name} | "
+        f"Assigned To: {task.assigned_to} | "
+        f"Due Date: {task.due_date} | "
+        f"Duration: {task.get('custom_duration')}"
+    )
 
     existing_events = get_task_events(task_name)
     existing_event = existing_events[0] if existing_events else None
