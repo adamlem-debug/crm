@@ -3,8 +3,9 @@ from frappe.utils import add_to_date, get_datetime
 
 
 def queue_task_calendar_sync(doc, method=None):
-    # Synchronous temporarily for debugging.
-    sync_task_calendar_event(doc.name)
+    frappe.throw(
+        f"CRM Task calendar hook FIRED for task {doc.name}"
+    )
 
 
 def queue_task_calendar_delete(doc, method=None):
