@@ -18,6 +18,7 @@
         >*</span
       >
     </div>
+
     <FormControl
       v-if="
         (field.read_only || field.fieldtype === 'Read Only') &&
@@ -43,6 +44,7 @@
       :disabled="true"
       :description="field.description"
     />
+
     <Grid
       v-else-if="field.fieldtype === 'Table'"
       v-model="data[field.fieldname]"
@@ -51,6 +53,7 @@
       :parentDoctype="doctype"
       :parentFieldname="field.fieldname"
     />
+
     <FormControl
       v-else-if="field.fieldtype === 'Select'"
       v-model="data[field.fieldname]"
@@ -66,6 +69,7 @@
         <IndicatorIcon :class="field.prefix" />
       </template>
     </FormControl>
+
     <div v-else-if="field.fieldtype == 'Check'" class="flex items-center gap-2">
       <FormControl
         v-model="data[field.fieldname]"
@@ -75,6 +79,7 @@
         :description="field.description"
         @change="(e) => fieldChange(e.target.checked, field)"
       />
+
       <label
         class="text-sm text-ink-gray-5"
         @click="
@@ -89,6 +94,7 @@
         <span v-if="field.mandatory" class="text-ink-red-6">*</span>
       </label>
     </div>
+
     <div
       v-else-if="['Link', 'Dynamic Link'].includes(field.fieldtype)"
       class="flex gap-1"
@@ -104,6 +110,7 @@
         :onCreate="field.create"
         @change="(v) => fieldChange(v, field)"
       />
+
       <Button
         v-if="data[field.fieldname] && field.edit"
         class="shrink-0"
@@ -138,9 +145,11 @@
           size="sm"
         />
       </template>
+
       <template #item-prefix="{ option }">
         <UserAvatar class="mr-2" :user="option.value" size="sm" />
       </template>
+
       <template #item-label="{ option }">
         <Tooltip :text="option.value">
           <div class="cursor-pointer">
@@ -149,6 +158,7 @@
         </Tooltip>
       </template>
     </Link>
+
     <Combobox
       v-else-if="field.fieldtype === 'Autocomplete'"
       v-model="data[field.fieldname]"
@@ -157,6 +167,7 @@
       :disabled="Boolean(field.read_only)"
       @update:modelValue="(v) => fieldChange(v, field, data)"
     />
+
     <TimePicker
       v-else-if="field.fieldtype === 'Time'"
       :value="data[field.fieldname]"
@@ -165,6 +176,7 @@
       input-class="border-none"
       @change="(v) => fieldChange(v, field)"
     />
+
     <DateTimePicker
       v-else-if="field.fieldtype === 'Datetime'"
       :value="data[field.fieldname]"
@@ -173,6 +185,7 @@
       input-class="border-none"
       @change="(v) => fieldChange(v, field)"
     />
+
     <DatePicker
       v-else-if="field.fieldtype === 'Date'"
       :value="data[field.fieldname]"
@@ -181,6 +194,7 @@
       input-class="border-none"
       @change="(v) => fieldChange(v, field)"
     />
+
     <FormControl
       v-else-if="
         ['Small Text', 'Text', 'Long Text', 'Code'].includes(field.fieldtype)
@@ -191,6 +205,7 @@
       :description="field.description"
       @change="fieldChange($event.target.value, field)"
     />
+
     <Password
       v-else-if="field.fieldtype === 'Password'"
       :value="data[field.fieldname]"
@@ -198,6 +213,7 @@
       :description="field.description"
       @change="fieldChange($event.target.value, field)"
     />
+
     <FormattedInput
       v-else-if="field.fieldtype === 'Int'"
       type="text"
@@ -207,6 +223,7 @@
       :description="field.description"
       @change="fieldChange($event.target.value, field)"
     />
+
     <FormattedInput
       v-else-if="field.fieldtype === 'Percent'"
       type="text"
@@ -216,6 +233,7 @@
       :description="field.description"
       @change="fieldChange(flt($event.target.value), field)"
     />
+
     <FormattedInput
       v-else-if="field.fieldtype === 'Float'"
       type="text"
@@ -225,6 +243,7 @@
       :description="field.description"
       @change="fieldChange(flt($event.target.value), field)"
     />
+
     <FormattedInput
       v-else-if="field.fieldtype === 'Currency'"
       type="text"
@@ -234,6 +253,7 @@
       :description="field.description"
       @change="fieldChange(flt($event.target.value), field)"
     />
+
     <DurationInput
       v-else-if="field.fieldtype === 'Duration'"
       :value="data[field.fieldname]"
@@ -242,6 +262,7 @@
       :description="field.description"
       @change="(v) => fieldChange(v, field)"
     />
+
     <RatingInput
       v-else-if="field.fieldtype === 'Rating'"
       :value="data[field.fieldname]"
@@ -249,6 +270,7 @@
       :disabled="Boolean(field.read_only)"
       @change="(v) => fieldChange(v, field)"
     />
+
     <ButtonControl
       v-else-if="field.fieldtype === 'Button'"
       :label="field.label"
@@ -258,6 +280,7 @@
       :disabled="Boolean(field.read_only)"
       @click="handleButtonClick(field)"
     />
+
     <AttachControl
       v-else-if="['Attach', 'Attach Image'].includes(field.fieldtype)"
       :value="data[field.fieldname]"
@@ -268,7 +291,9 @@
       :disabled="Boolean(field.read_only)"
       @change="(v) => fieldChange(v, field)"
     />
+
     <HtmlControl v-else-if="field.fieldtype === 'HTML'" :html="resolvedHtml" />
+
     <TextEditorControl
       v-else-if="field.fieldtype === 'Text Editor'"
       :value="data[field.fieldname]"
@@ -276,12 +301,14 @@
       :disabled="Boolean(field.read_only)"
       @change="(v) => fieldChange(v, field)"
     />
+
     <GeolocationControl
       v-else-if="field.fieldtype === 'Geolocation'"
       :value="data[field.fieldname]"
       :disabled="Boolean(field.read_only)"
       @change="(v) => fieldChange(v, field)"
     />
+
     <FormControl
       v-else
       type="text"
@@ -293,6 +320,7 @@
     />
   </div>
 </template>
+
 <script setup>
 import Password from '@/components/Controls/Password.vue'
 import FormattedInput from '@/components/Controls/FormattedInput.vue'
@@ -332,6 +360,8 @@ import {
   TimePicker,
 } from 'frappe-ui'
 import { computed, provide, inject, ref } from 'vue'
+
+const TECHNICAL_CALENDAR_STATUS = 'Removed from Calendar'
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -375,6 +405,7 @@ if (standaloneContext) {
       data.value[fieldname] = value
     }
   }
+
   triggerButton = async () => {}
   formDocument.value = standaloneContext
 
@@ -393,6 +424,7 @@ if (standaloneContext) {
   // freshly-loaded doc: name is still empty, so changes write to the wrong
   // (new-document) cache slot and the first save serializes the pristine doc.
   const resolvedName = docname != null ? docname.value : data.value.name
+
   const {
     triggerOnChange: trigger,
     triggerButton: triggerBtn,
@@ -400,6 +432,7 @@ if (standaloneContext) {
     triggerOnRowRemove,
     document: doc,
   } = useDocument(doctype, resolvedName)
+
   triggerOnChange = trigger
   triggerButton = triggerBtn
   formDocument.value = doc
@@ -423,6 +456,7 @@ const injectedOverrides = inject(
   'fieldPropertyOverrides',
   computed(() => ({})),
 )
+
 const injectedParentFieldname = inject('parentFieldname', '')
 
 /**
@@ -435,6 +469,7 @@ function getFieldOverrides(fieldname) {
   if (isGridRow) {
     const ov = injectedOverrides.value || {}
     const pf = injectedParentFieldname
+
     if (!pf) return undefined
 
     const colKey = `${pf}.${fieldname}`
@@ -445,8 +480,13 @@ function getFieldOverrides(fieldname) {
     const rowOv = rowKey ? ov[rowKey] : null
 
     if (!colOv && !rowOv) return undefined
-    return { ...(colOv || {}), ...(rowOv || {}) }
+
+    return {
+      ...(colOv || {}),
+      ...(rowOv || {}),
+    }
   }
+
   return formDocument.value?.fieldPropertyOverrides?.[fieldname]
 }
 
@@ -455,11 +495,15 @@ const field = computed(() => {
 
   // ── Script property overrides ──
   const overrides = getFieldOverrides(field.fieldname)
+
   if (overrides) {
     Object.assign(field, overrides)
   }
 
-  if (field.fieldtype == 'Select' && typeof field.options === 'string') {
+  if (
+    field.fieldtype == 'Select' &&
+    typeof field.options === 'string'
+  ) {
     field.options = field.options.split('\n').map((option) => {
       return {
         label: __(option),
@@ -467,7 +511,43 @@ const field = computed(() => {
       }
     })
 
-    if (field.options[0].value !== '' && !field.reqd) {
+    // ---------------------------------------------------------
+    // VitalAge:
+    // "Removed from Calendar" is a technical CRM Task status.
+    //
+    // Backend/API/automation may use it, but normal users must
+    // not be able to select it manually.
+    //
+    // If the Task is CURRENTLY in that technical status, keep
+    // the option temporarily so the Select can display its
+    // existing value. Once the user changes away from it, the
+    // option disappears.
+    // ---------------------------------------------------------
+    const resolvedDoctype =
+      doctype && typeof doctype === 'object' && 'value' in doctype
+        ? doctype.value
+        : doctype
+
+    const isCrmTaskStatus =
+      resolvedDoctype === 'CRM Task' &&
+      field.fieldname === 'status'
+
+    const currentStatus = data.value?.status
+
+    if (
+      isCrmTaskStatus &&
+      currentStatus !== TECHNICAL_CALENDAR_STATUS
+    ) {
+      field.options = field.options.filter(
+        (option) =>
+          option.value !== TECHNICAL_CALENDAR_STATUS,
+      )
+    }
+
+    if (
+      field.options[0]?.value !== '' &&
+      !field.reqd
+    ) {
       field.options.unshift({
         label: '',
         value: '',
@@ -475,136 +555,258 @@ const field = computed(() => {
     }
   }
 
-  if (field.fieldtype === 'Link' && field.options === 'User') {
+  if (
+    field.fieldtype === 'Link' &&
+    field.options === 'User'
+  ) {
     field.fieldtype = 'User'
+
     field.link_filters = JSON.stringify({
-      name: ['in', users.data.crmUsers?.map((user) => user.name)],
+      name: [
+        'in',
+        users.data.crmUsers?.map(
+          (user) => user.name,
+        ),
+      ],
       ignore_user_type: 1,
       ...(parseLinkFilters(field.link_filters) || {}),
     })
   }
 
-  if (field.fieldtype === 'Link' && field.options !== 'User') {
+  if (
+    field.fieldtype === 'Link' &&
+    field.options !== 'User'
+  ) {
     if (!field.create) {
       field.create = (value, close) => {
         const callback = (d) => {
-          if (d) fieldChange(d.name, field)
+          if (d) {
+            fieldChange(
+              d.name,
+              field,
+            )
+          }
         }
-        createDocument(field.options, value, close, callback)
+
+        createDocument(
+          field.options,
+          value,
+          close,
+          callback,
+        )
       }
     }
   }
 
-  const read_only_via_depends_on = evaluateDependsOnValue(
-    field.read_only_depends_on,
-    data.value,
-  )
+  const read_only_via_depends_on =
+    evaluateDependsOnValue(
+      field.read_only_depends_on,
+      data.value,
+    )
 
   // Script overrides for read_only take priority over depends_on
-  const scriptReadOnly = overrides?.read_only
+  const scriptReadOnly =
+    overrides?.read_only
+
   const effectiveReadOnly =
     scriptReadOnly !== undefined
       ? scriptReadOnly
       : field.read_only ||
-        (field.read_only_depends_on && read_only_via_depends_on)
+        (
+          field.read_only_depends_on &&
+          read_only_via_depends_on
+        )
 
   // Script overrides for depends_on visibility
-  const scriptHidden = overrides?.hidden
-  const displayViaDependsOn = evaluateDependsOnValue(
-    field.depends_on,
-    data.value,
-  )
+  const scriptHidden =
+    overrides?.hidden
+
+  const displayViaDependsOn =
+    evaluateDependsOnValue(
+      field.depends_on,
+      data.value,
+    )
 
   let _field = {
     ...field,
-    filters: parseLinkFilters(field.link_filters),
-    placeholder: field.placeholder || field.label,
-    display_via_depends_on: displayViaDependsOn,
-    mandatory_via_depends_on: evaluateDependsOnValue(
-      field.mandatory_depends_on,
-      data.value,
+
+    filters: parseLinkFilters(
+      field.link_filters,
     ),
-    read_only: effectiveReadOnly,
+
+    placeholder:
+      field.placeholder ||
+      field.label,
+
+    display_via_depends_on:
+      displayViaDependsOn,
+
+    mandatory_via_depends_on:
+      evaluateDependsOnValue(
+        field.mandatory_depends_on,
+        data.value,
+      ),
+
+    read_only:
+      effectiveReadOnly,
   }
 
-  _field.visible = isFieldVisible(_field, scriptHidden)
+  _field.visible = isFieldVisible(
+    _field,
+    scriptHidden,
+  )
+
   return _field
 })
 
-function isFieldVisible(field, scriptHidden) {
-  if (preview.value) return true
+function isFieldVisible(
+  field,
+  scriptHidden,
+) {
+  if (preview.value) {
+    return true
+  }
 
   // Script override for hidden wins over everything
-  if (scriptHidden !== undefined) return !scriptHidden
+  if (scriptHidden !== undefined) {
+    return !scriptHidden
+  }
 
   let readOnlyField =
-    field.read_only || field.fieldtype === 'Read Only' ? true : false
+    field.read_only ||
+    field.fieldtype === 'Read Only'
+      ? true
+      : false
 
   let hideEmptyReadOnlyField =
-    isNull(data.value[field.fieldname]) &&
-    Number(window.sysdefaults?.hide_empty_read_only_fields ?? 1)
+    isNull(
+      data.value[field.fieldname],
+    ) &&
+    Number(
+      window.sysdefaults
+        ?.hide_empty_read_only_fields ?? 1,
+    )
 
-  let showReadOnlyField = readOnlyField && !hideEmptyReadOnlyField
+  let showReadOnlyField =
+    readOnlyField &&
+    !hideEmptyReadOnlyField
 
   return (
-    (field.fieldtype == 'Check' || showReadOnlyField || !readOnlyField) &&
-    (!field.depends_on || field.display_via_depends_on) &&
+    (
+      field.fieldtype == 'Check' ||
+      showReadOnlyField ||
+      !readOnlyField
+    ) &&
+    (
+      !field.depends_on ||
+      field.display_via_depends_on
+    ) &&
     !field.hidden
   )
 }
 
 const resolvedHtml = computed(() => {
-  if (field.value.fieldtype !== 'HTML') return ''
-  const injected = formDocument.value?.fieldHtmlMap?.[field.value.fieldname]
-  if (injected !== undefined) return injected
-  return interpolateTemplate(field.value.options || '', data.value)
+  if (
+    field.value.fieldtype !== 'HTML'
+  ) {
+    return ''
+  }
+
+  const injected =
+    formDocument.value?.fieldHtmlMap?.[
+      field.value.fieldname
+    ]
+
+  if (injected !== undefined) {
+    return injected
+  }
+
+  return interpolateTemplate(
+    field.value.options || '',
+    data.value,
+  )
 })
 
 const getPlaceholder = (field) => {
   if (field.placeholder) {
     return __(field.placeholder)
   }
-  if (['Select', 'Link'].includes(field.fieldtype)) {
-    return __('Select {0}', [__(field.label)])
-  } else {
-    return __('Enter {0}', [__(field.label)])
+
+  if (
+    ['Select', 'Link'].includes(
+      field.fieldtype,
+    )
+  ) {
+    return __(
+      'Select {0}',
+      [__(field.label)],
+    )
   }
+
+  return __(
+    'Enter {0}',
+    [__(field.label)],
+  )
 }
 
 const getOptions = (options) => {
   if (Array.isArray(options)) {
     return options
-  } else if (typeof options === 'string') {
-    return options.split('\n').map((option) => {
-      return { label: option, value: option }
-    })
-  } else {
-    return []
   }
+
+  if (typeof options === 'string') {
+    return options
+      .split('\n')
+      .map((option) => {
+        return {
+          label: option,
+          value: option,
+        }
+      })
+  }
+
+  return []
 }
 
 async function handleButtonClick(field) {
   if (typeof field.click === 'function') {
-    return await field.click(data.value)
-  } else {
-    return await triggerButton(field.fieldname)
+    return await field.click(
+      data.value,
+    )
   }
+
+  return await triggerButton(
+    field.fieldname,
+  )
 }
 
-async function fieldChange(value, df) {
+async function fieldChange(
+  value,
+  df,
+) {
   value = Array.isArray(value)
     ? value
-    : typeof value === 'object' && value !== null && 'value' in value
+    : typeof value === 'object' &&
+        value !== null &&
+        'value' in value
       ? value.value
       : value
 
   if (isGridRow) {
-    await triggerOnChange(df.fieldname, value, data.value)
+    await triggerOnChange(
+      df.fieldname,
+      value,
+      data.value,
+    )
   } else {
-    await triggerOnChange(df.fieldname, value)
+    await triggerOnChange(
+      df.fieldname,
+      value,
+    )
   }
 }
 </script>
+
 <style scoped>
 :deep(.form-control.prefix select) {
   padding-left: 2rem;
