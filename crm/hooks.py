@@ -234,6 +234,7 @@ scheduler_events = {
 		"*/5 * * * *": ["crm.lead_syncing.background_sync.sync_leads_from_sources_5_minutes"],
 		"*/10 * * * *": ["crm.lead_syncing.background_sync.sync_leads_from_sources_10_minutes"],
 		"*/15 * * * *": ["crm.lead_syncing.background_sync.sync_leads_from_sources_15_minutes"],
+        "*/15 * * * *": ["crm.fcrm.task_calendar_sync.reconcile_external_calendar_removals"],
 	},
 }
 

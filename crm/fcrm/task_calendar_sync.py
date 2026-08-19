@@ -12,8 +12,6 @@ def queue_task_calendar_sync(doc, method=None):
     """
     Queue calendar synchronization only after the CRM Task
     transaction has successfully committed.
-
-    This keeps Task saving independent from Google Calendar sync.
     """
 
     frappe.enqueue(
@@ -30,9 +28,6 @@ def cleanup_task_notifications(doc, method=None):
 
     CRM Notification records can dynamically reference CRM Tasks
     and block Task deletion during Frappe's linked-document checks.
-
-    These deletes happen in the same DB transaction as the Task
-    deletion, so they are rolled back if Task deletion fails.
     """
 
     frappe.db.delete(
@@ -56,8 +51,8 @@ def queue_task_calendar_delete(doc, method=None):
     """
     Runs after CRM Task deletion.
 
-    Delete all Events that historically belonged to the Task
-    only after the Task deletion transaction successfully commits.
+    Delete all Events historically belonging to the Task
+    after the transaction successfully commits.
     """
 
     frappe.enqueue(
@@ -71,7 +66,7 @@ def queue_task_calendar_delete(doc, method=None):
 
 def get_calendar_settings():
     """
-    Read configurable calendar-sync rules from VitalAge CRM Settings.
+    Read calendar-sync configuration from VitalAge CRM Settings.
     """
 
     settings = frappe.get_single(
@@ -98,15 +93,20 @@ def get_calendar_settings():
         if row.task_status
     }
 
+    external_removal_status = settings.get(
+        "external_calendar_removal_status"
+    )
+
     return (
         enabled_task_types,
         cancellation_statuses,
+        external_removal_status,
     )
 
 
 def get_google_calendar(user):
     """
-    Find the enabled push-enabled Google Calendar
+    Find enabled push-enabled Google Calendar
     belonging to the assigned Frappe user.
     """
 
@@ -138,8 +138,7 @@ def delete_calendar_event(event_name):
     """
     Delete one Frappe Event.
 
-    Frappe's normal Event deletion lifecycle handles
-    the corresponding Google Calendar cleanup.
+    Frappe's native Event lifecycle handles the Google cleanup.
     """
 
     if not event_name:
@@ -162,7 +161,7 @@ def delete_task_calendar_history(
 ):
     """
     Physically deleting a CRM Task removes all Events
-    ever created for it, including old cancelled Events.
+    ever created for it.
     """
 
     event_names = set()
@@ -194,8 +193,8 @@ def delete_task_calendar_history(
 
 def unlink_task_calendar_event(task_name):
     """
-    Clear the Task -> current Event relationship
-    without triggering another CRM Task on_update.
+    Clear CRM Task -> current Event without firing
+    another Task on_update cycle.
     """
 
     if frappe.db.exists(
@@ -216,10 +215,9 @@ def remove_active_task_event(
     event,
 ):
     """
-    Used when an active Task should no longer have
-    a calendar Event.
+    Remove an active calendar Event.
 
-    Cancelled/Closed Events are retained as history.
+    Terminal historical Events are retained.
     """
 
     unlink_task_calendar_event(
@@ -241,11 +239,7 @@ def cancel_task_event(
     event,
 ):
     """
-    Cancel the current Event but retain it as history.
-
-    The Task continues pointing to the cancelled Event.
-    If the Task later becomes active again, that Event
-    is detached and a fresh Event is created.
+    Cancel current Event and retain it as history.
     """
 
     if not event:
@@ -273,8 +267,7 @@ def create_calendar_event(
     ends_on,
 ):
     """
-    Create a fresh Frappe Event and allow Frappe's
-    native Google Calendar integration to sync it.
+    Create a fresh Frappe Event.
     """
 
     event = frappe.get_doc(
@@ -316,8 +309,6 @@ def create_calendar_event(
         ignore_permissions=True
     )
 
-    # Assigned Task user owns the Event.
-    # Event remains Public for broader Event visibility.
     frappe.db.set_value(
         "Event",
         event.name,
@@ -326,10 +317,6 @@ def create_calendar_event(
         update_modified=False,
     )
 
-    # Store CURRENT Event on Task.
-    #
-    # Direct DB update intentionally avoids another
-    # CRM Task on_update -> calendar sync loop.
     frappe.db.set_value(
         "CRM Task",
         task.name,
@@ -343,13 +330,8 @@ def create_calendar_event(
 
 def sync_task_calendar_event(task_name):
     """
-    Synchronize the current state of a CRM Task with its
-    Frappe Event / Google Calendar event.
-
-    Important:
-    This function always reads the Task fresh from the DB.
-    The queued job therefore works from the latest committed
-    Task state rather than from stale data passed by the UI.
+    Synchronize current CRM Task state with Frappe Event
+    and Google Calendar.
     """
 
     if not frappe.db.exists(
@@ -366,6 +348,7 @@ def sync_task_calendar_event(task_name):
     (
         enabled_task_types,
         cancellation_statuses,
+        external_removal_status,
     ) = get_calendar_settings()
 
     task_type = task.get(
@@ -405,6 +388,20 @@ def sync_task_calendar_event(task_name):
         event_name = None
 
     # ---------------------------------------------------------
+    # EXTERNAL CALENDAR REMOVAL STATUS
+    # ---------------------------------------------------------
+    #
+    # This status means Google-side deletion was detected.
+    # Do NOT recreate the Event while the Task remains here.
+    # ---------------------------------------------------------
+
+    if (
+        external_removal_status
+        and task.status == external_removal_status
+    ):
+        return
+
+    # ---------------------------------------------------------
     # TASK CANCELLATION
     # ---------------------------------------------------------
 
@@ -437,7 +434,12 @@ def sync_task_calendar_event(task_name):
         return
 
     # ---------------------------------------------------------
-    # REACTIVATION AFTER CANCELLATION
+    # REACTIVATION AFTER TERMINAL EVENT
+    # ---------------------------------------------------------
+    #
+    # Applies both to:
+    # - intentional cancellation
+    # - external Google removal
     # ---------------------------------------------------------
 
     if (
@@ -506,10 +508,6 @@ def sync_task_calendar_event(task_name):
 
         return
 
-    # ---------------------------------------------------------
-    # START / END
-    # ---------------------------------------------------------
-
     starts_on = get_datetime(
         task.due_date
     )
@@ -520,7 +518,7 @@ def sync_task_calendar_event(task_name):
     )
 
     # ---------------------------------------------------------
-    # REASSIGNMENT TO ANOTHER CALENDAR
+    # REASSIGNMENT
     # ---------------------------------------------------------
 
     if (
@@ -597,3 +595,98 @@ def sync_task_calendar_event(task_name):
         starts_on,
         ends_on,
     )
+
+
+def reconcile_external_calendar_removals():
+    """
+    Detect Google-side event deletion/cancellation.
+
+    Frappe's native Google Calendar pull sync marks the local
+    Event as Closed when Google reports the event as cancelled.
+
+    If that Event belongs to one of our CRM Tasks and the Task
+    was not intentionally cancelled in CRM, move the Task into
+    the configured external-removal status.
+    """
+
+    (
+        enabled_task_types,
+        cancellation_statuses,
+        external_removal_status,
+    ) = get_calendar_settings()
+
+    if not external_removal_status:
+        return
+
+    closed_events = frappe.get_all(
+        "Event",
+        filters={
+            "status": "Closed",
+            "custom_crm_task_name": [
+                "is",
+                "set",
+            ],
+        },
+        fields=[
+            "name",
+            "custom_crm_task_name",
+        ],
+    )
+
+    for event in closed_events:
+        task_name = event.custom_crm_task_name
+
+        if not task_name:
+            continue
+
+        if not frappe.db.exists(
+            "CRM Task",
+            task_name,
+        ):
+            continue
+
+        task = frappe.get_doc(
+            "CRM Task",
+            task_name,
+        )
+
+        # Ignore Tasks intentionally cancelled in CRM.
+        if (
+            task.status
+            in cancellation_statuses
+        ):
+            continue
+
+        # Ignore Tasks already flagged.
+        if (
+            task.status
+            == external_removal_status
+        ):
+            continue
+
+        # Only calendar-enabled Task Types should participate.
+        if (
+            task.get("custom_task_type")
+            not in enabled_task_types
+        ):
+            continue
+
+        # Only react if this Closed Event is still the Task's
+        # CURRENT linked Event.
+        if (
+            task.get("custom_calendar_event")
+            != event.name
+        ):
+            continue
+
+        # Direct DB update is intentional.
+        #
+        # We do NOT want CRM Task.on_update to run here,
+        # because that would immediately recreate the event.
+        frappe.db.set_value(
+            "CRM Task",
+            task.name,
+            "status",
+            external_removal_status,
+            update_modified=True,
+        )
