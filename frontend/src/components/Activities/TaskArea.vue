@@ -9,14 +9,17 @@
           <div class="font-medium text-ink-gray-9 truncate">
             {{ task.title }}
           </div>
+
           <div class="flex gap-1.5 text-ink-gray-8">
             <div class="flex items-center gap-1.5">
               <UserAvatar :user="task.assigned_to" size="xs" />
               {{ getUser(task.assigned_to).full_name }}
             </div>
+
             <div v-if="task.due_date" class="flex items-center justify-center">
               <DotIcon class="h-2.5 w-2.5 text-ink-gray-5" :radius="2" />
             </div>
+
             <div v-if="task.due_date">
               <Tooltip
                 :text="formatDate(task.due_date, 'ddd, MMM D, YYYY | hh:mm a')"
@@ -27,18 +30,21 @@
                 </div>
               </Tooltip>
             </div>
+
             <div class="flex items-center justify-center">
               <DotIcon class="h-2.5 w-2.5 text-ink-gray-5" :radius="2" />
             </div>
+
             <div class="flex gap-2">
               <TaskPriorityIcon class="!h-2 !w-2" :priority="task.priority" />
               {{ __(task.priority) }}
             </div>
           </div>
         </div>
+
         <div class="flex items-center gap-1">
           <Dropdown
-            :options="taskStatusOptions(modalRef.updateTaskStatus, task)"
+            :options="userSelectableTaskStatusOptions(modalRef.updateTaskStatus, task)"
           >
             <Button
               :tooltip="__('Change Status')"
@@ -49,6 +55,7 @@
               <TaskStatusIcon :status="task.status" />
             </Button>
           </Dropdown>
+
           <Dropdown
             :options="[
               {
@@ -83,6 +90,7 @@
           </Dropdown>
         </div>
       </div>
+
       <div
         v-if="i < tasks.length - 1"
         class="mx-2 h-px border-t border-outline-elevation-2"
@@ -90,6 +98,7 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import CalendarIcon from '@/components/Icons/CalendarIcon.vue'
 import TaskStatusIcon from '@/components/Icons/TaskStatusIcon.vue'
@@ -101,6 +110,10 @@ import { usersStore } from '@/stores/users'
 import { globalStore } from '@/stores/global'
 import { Tooltip, Dropdown } from 'frappe-ui'
 
+const TECHNICAL_TASK_STATUSES = new Set([
+  'Removed from Calendar',
+])
+
 defineProps({
   tasks: { type: Array, default: () => [] },
   modalRef: { type: Object, default: () => ({}) },
@@ -108,4 +121,10 @@ defineProps({
 
 const { getUser } = usersStore()
 const { $dialog } = globalStore()
+
+function userSelectableTaskStatusOptions(action, task) {
+  return taskStatusOptions(action, task).filter(
+    (option) => !TECHNICAL_TASK_STATUSES.has(option.label),
+  )
+}
 </script>

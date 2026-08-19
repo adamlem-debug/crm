@@ -58,7 +58,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Backlog\nTodo\nIn Progress\nDone\nCanceled"
+   "options": "Todo\nBacklog\nIn Progress\nDone\nCanceled\nRemoved from Calendar"
   },
   {
    "fieldname": "due_date",
